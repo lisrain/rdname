@@ -54,6 +54,28 @@ body {
 .app { display: flex; flex-direction: column; min-height: calc(100vh - 57px); min-height: calc(100dvh - 57px); }
 .main-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
 
+/* Empty State */
+.empty-state {
+  width: 100%; max-width: 800px; padding: 48px 24px; text-align: center;
+  background: #fff; border-radius: var(--radius); border: 2px dashed var(--n-300);
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state-title { font-size: 18px; font-weight: 700; color: var(--n-800); margin-bottom: 8px; }
+.empty-state-desc { font-size: 14px; color: var(--n-500); line-height: 1.6; margin-bottom: 20px; }
+.empty-state-steps {
+  text-align: left; max-width: 320px; margin: 0 auto 20px;
+  font-size: 13px; color: var(--n-600); line-height: 2;
+}
+.empty-state-steps li { margin-bottom: 4px; }
+.empty-state-btn {
+  height: 44px; padding: 0 24px; border: none; border-radius: var(--radius);
+  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); font-family: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.empty-state-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.empty-state-btn svg { width: 18px; height: 18px; }
+
 /* Grid */
 .grid-container { width: 100%; max-width: 800px; margin-bottom: 24px; }
 .number-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
@@ -294,6 +316,10 @@ body.fullscreen-mode .draw-btn { height: 72px; font-size: 24px; }
 body.fullscreen-mode .history-panel { display: none; }
 body.fullscreen-mode .status-bar { font-size: 16px; margin-bottom: 32px; }
 body.fullscreen-mode .grid-container { max-width: 1200px; }
+body.fullscreen-mode .empty-state { padding: 64px 32px; }
+body.fullscreen-mode .empty-state-icon { font-size: 64px; }
+body.fullscreen-mode .empty-state-title { font-size: 24px; }
+body.fullscreen-mode .empty-state-desc { font-size: 16px; }
 
 /* Responsive */
 @media (min-width: 640px) {
@@ -301,6 +327,9 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   .number-cell { font-size: 18px; }
   .modal { border-radius: 16px; margin: auto; max-height: 80vh; }
   .modal-overlay { align-items: center; }
+  .empty-state { padding: 64px 32px; }
+  .empty-state-icon { font-size: 56px; }
+  .empty-state-title { font-size: 20px; }
 }
 @media (min-width: 1024px) {
   .number-grid { grid-template-columns: repeat(10, 1fr); gap: 12px; }
@@ -322,6 +351,29 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   50% { box-shadow: 0 0 0 8px rgba(59,130,246,0); }
 }
 .number-cell.highlight { animation: pulse 0.6s infinite; }
+
+/* Help Modal */
+.help-section { margin-bottom: 20px; }
+.help-section:last-child { margin-bottom: 0; }
+.help-section h3 {
+  font-size: 15px; font-weight: 700; color: var(--n-800);
+  margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--n-100);
+}
+.help-section p { font-size: 13px; color: var(--n-600); line-height: 1.6; }
+.help-section ol, .help-section ul {
+  font-size: 13px; color: var(--n-600); line-height: 1.8; padding-left: 20px;
+}
+.help-section li { margin-bottom: 4px; }
+.help-shortcuts { display: flex; flex-direction: column; gap: 8px; }
+.help-shortcut {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--n-600);
+}
+.help-shortcut kbd {
+  display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600;
+  background: var(--n-100); border: 1px solid var(--n-200); border-radius: 4px;
+  font-family: inherit; color: var(--n-700); min-width: 40px; text-align: center;
+}
 </style>
 </head>
 <body>
@@ -335,6 +387,9 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     </div>
   </div>
   <div class="header-actions">
+    <button class="header-btn" id="btnHelp" title="使用说明">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </button>
     <button class="header-btn" id="btnFullscreen" title="全屏">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
     </button>
@@ -355,6 +410,20 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     </div>
 
     <div class="grid-container">
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-title">还没有人名数据</div>
+        <div class="empty-state-desc">请先添加要抽取的人名，才能开始使用</div>
+        <ol class="empty-state-steps">
+          <li>点击下方按钮打开设置</li>
+          <li>切换到「人名管理」标签页</li>
+          <li>逐个输入姓名或批量导入 TXT 文件</li>
+        </ol>
+        <button class="empty-state-btn" id="btnEmptyAdd">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          去添加人名
+        </button>
+      </div>
       <div class="number-grid" id="numberGrid"></div>
     </div>
 
@@ -483,6 +552,70 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   </div>
 </div>
 
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>使用说明</h2>
+      <button class="modal-close" id="btnCloseHelp">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="help-section">
+        <h3>基本功能</h3>
+        <p>随机抽取工具支持两种模式：<strong>号数模式</strong>和<strong>人名模式</strong>。</p>
+      </div>
+
+      <div class="help-section">
+        <h3>号数模式</h3>
+        <ol>
+          <li>在设置中配置「号码总数」和「起始号码」</li>
+          <li>点击「开始抽取」按钮启动</li>
+          <li>再次点击或按空格键停止，抽中的号码会高亮显示</li>
+          <li>已抽中的号码会自动变灰，下次不再参与抽取</li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>人名模式</h3>
+        <ol>
+          <li>点击右上角齿轮图标打开设置</li>
+          <li>切换到「人名管理」标签页</li>
+          <li>逐个输入姓名，或导入 TXT 文件批量添加</li>
+          <li>保存后切换到「人名」模式即可使用</li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>快捷键</h3>
+        <div class="help-shortcuts">
+          <div class="help-shortcut"><kbd>空格</kbd> / <kbd>回车</kbd> 开始/停止抽取</div>
+          <div class="help-shortcut"><kbd>Esc</kbd> 停止抽取或关闭弹窗</div>
+          <div class="help-shortcut"><kbd>F</kbd> 切换全屏模式</div>
+          <div class="help-shortcut"><kbd>S</kbd> 打开设置</div>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <h3>其他功能</h3>
+        <ul>
+          <li><strong>排除列表</strong>：在设置中勾选不想参与抽取的项目</li>
+          <li><strong>抽取历史</strong>：查看已抽中过的记录</li>
+          <li><strong>全屏模式</strong>：适合大屏投影使用</li>
+          <li><strong>动画速度</strong>：可调节滚动动画的快慢</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>数据存储</h3>
+        <p>所有数据保存在浏览器本地，清除浏览器数据会丢失设置和记录。建议定期导出人名列表作为备份。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -517,6 +650,9 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   const $btnClearHistory = $('#btnClearHistory');
   const $btnSettings = $('#btnSettings');
   const $btnFullscreen = $('#btnFullscreen');
+  const $btnHelp = $('#btnHelp');
+  const $helpOverlay = $('#helpOverlay');
+  const $btnCloseHelp = $('#btnCloseHelp');
   const $settingsOverlay = $('#settingsOverlay');
   const $btnCloseSettings = $('#btnCloseSettings');
   const $btnSaveSettings = $('#btnSaveSettings');
@@ -536,6 +672,8 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   const $importArea = $('#importArea');
   const $fileImportNames = $('#fileImportNames');
   const $numbersConfig = $('#numbersConfig');
+  const $emptyState = $('#emptyState');
+  const $btnEmptyAdd = $('#btnEmptyAdd');
 
   // ===== Storage =====
   function loadConfig() {
@@ -564,6 +702,7 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   }
 
   function renderGrid() {
+    updateEmptyState();
     $grid.innerHTML = '';
     allItems.forEach(item => {
       const cell = document.createElement('div');
@@ -615,12 +754,28 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     if ($numbersConfig) $numbersConfig.style.display = config.mode === 'numbers' ? 'flex' : 'none';
   }
 
+  function updateEmptyState() {
+    if (config.mode === 'names' && config.names.length === 0) {
+      $emptyState.style.display = 'block';
+      $grid.style.display = 'none';
+      $btnDraw.disabled = true;
+    } else {
+      $emptyState.style.display = 'none';
+      $grid.style.display = 'grid';
+      $btnDraw.disabled = false;
+    }
+  }
+
   // ===== Drawing =====
   function getAvailable() {
     return allItems.filter(n => !config.excludeSet.includes(n) && !config.history.includes(n));
   }
 
   function startDraw() {
+    if (config.mode === 'names' && config.names.length === 0) {
+      showToast('请先添加人名');
+      return;
+    }
     if (getAvailable().length === 0) { showToast('没有可抽取的项目'); return; }
     running = true;
     $btnDraw.textContent = '停止';
@@ -676,6 +831,10 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   }
   function closeSettings() { $settingsOverlay.classList.remove('open'); }
 
+  // ===== Help =====
+  function openHelp() { $helpOverlay.classList.add('open'); }
+  function closeHelp() { $helpOverlay.classList.remove('open'); }
+
   function populateForm() {
     $inputCount.value = config.count;
     $inputStart.value = config.startNum;
@@ -720,7 +879,7 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     if (config.names.includes(name)) { showToast('该姓名已存在'); return; }
     config.names.push(name);
     $inputNewName.value = '';
-    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus();
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus(); updateEmptyState();
   }
 
   function removeName(name) {
@@ -732,7 +891,7 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
   function clearAllNames() {
     if (!confirm('确定要清空所有人名吗？')) return;
     config.names = []; config.excludeSet = [];
-    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); renderGrid(); updateStatus();
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); renderGrid(); updateStatus(); updateEmptyState();
     showToast('人名已清空');
   }
 
@@ -753,7 +912,7 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     names.forEach(name => {
       if (!config.names.includes(name)) { config.names.push(name); added++; }
     });
-    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus();
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus(); updateEmptyState();
     showToast(`导入成功，新增 ${added} 人，共 ${config.names.length} 人`);
   }
 
@@ -795,7 +954,15 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
       });
     });
 
+    $btnEmptyAdd.addEventListener('click', () => {
+      openSettings();
+      setTimeout(() => switchTab('names'), 100);
+    });
+
     $btnDraw.addEventListener('click', () => running ? stopDraw() : startDraw());
+    $btnHelp.addEventListener('click', openHelp);
+    $btnCloseHelp.addEventListener('click', closeHelp);
+    $helpOverlay.addEventListener('click', e => { if (e.target === $helpOverlay) closeHelp(); });
     $btnSettings.addEventListener('click', openSettings);
     $btnCloseSettings.addEventListener('click', closeSettings);
     $settingsOverlay.addEventListener('click', e => { if (e.target === $settingsOverlay) closeSettings(); });
@@ -844,9 +1011,14 @@ body.fullscreen-mode .grid-container { max-width: 1200px; }
     document.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
       if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); running ? stopDraw() : startDraw(); }
-      if (e.code === 'Escape') { $settingsOverlay.classList.contains('open') ? closeSettings() : running && stopDraw(); }
+      if (e.code === 'Escape') {
+        if ($helpOverlay.classList.contains('open')) closeHelp();
+        else if ($settingsOverlay.classList.contains('open')) closeSettings();
+        else running && stopDraw();
+      }
       if (e.code === 'KeyF') toggleFullscreen();
       if (e.code === 'KeyS') openSettings();
+      if (e.code === 'KeyH') openHelp();
     });
   }
 
