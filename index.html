@@ -18,6 +18,14 @@
   --accent: #3b82f6; --success: #10b981; --error: #ef4444; --warning: #f59e0b;
   --radius: 8px; --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --n-50: #0f172a; --n-100: #1e293b; --n-200: #334155; --n-300: #475569;
+    --n-400: #64748b; --n-500: #94a3b8; --n-600: #cbd5e1; --n-700: #e2e8f0;
+    --n-800: #f1f5f9; --n-900: #f8fafc;
+    --accent: #60a5fa; --success: #34d399; --error: #f87171; --warning: #fbbf24;
+  }
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: 'HarmonyOS_Sans', "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -373,6 +381,37 @@ body.fullscreen-mode .empty-state-desc { font-size: 16px; }
   display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600;
   background: var(--n-100); border: 1px solid var(--n-200); border-radius: 4px;
   font-family: inherit; color: var(--n-700); min-width: 40px; text-align: center;
+}
+
+/* Dark Mode - Override hardcoded colors */
+@media (prefers-color-scheme: dark) {
+  .header { background: var(--n-100); border-bottom-color: var(--n-200); }
+  .mode-btn.active { background: var(--n-50); }
+  .btn-primary { color: #000; }
+  .btn-danger { color: #000; }
+  .number-cell { background: var(--n-100); border-color: var(--n-200); }
+  .number-cell.highlight { box-shadow: 0 0 20px rgba(96,165,250,0.5); }
+  .number-cell.selected { box-shadow: 0 0 24px rgba(52,211,153,0.5); }
+  .draw-btn { color: #000; }
+  .draw-btn.running { color: #fff; }
+  .draw-btn:disabled { color: var(--n-500); }
+  .history-panel { background: var(--n-100); border-color: var(--n-200); }
+  .modal { background: var(--n-100); }
+  .modal-close { background: var(--n-200); }
+  .form-input, .form-select { background: var(--n-200); border-color: var(--n-300); color: var(--n-800); }
+  .exclude-item { background: var(--n-100); border-color: var(--n-200); }
+  .names-tag { background: var(--n-200); }
+  .names-tag-remove:hover { background: var(--error); }
+  .names-guide { background: var(--n-200); border-color: var(--n-300); }
+  .names-list { background: var(--n-200); border-color: var(--n-300); }
+  .import-area { background: var(--n-100); border-color: var(--n-300); }
+  .empty-state { background: var(--n-100); border-color: var(--n-300); }
+  .btn-secondary { color: var(--n-800); }
+  .history-item { background: var(--n-200); }
+  .help-section h3 { border-bottom-color: var(--n-200); }
+  .tab-bar { border-bottom-color: var(--n-200); }
+  .tab-btn { color: var(--n-400); }
+  .tab-btn.active { color: var(--accent); }
 }
 </style>
 </head>
