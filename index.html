@@ -386,33 +386,43 @@ body.fullscreen-mode .empty-state-desc { font-size: 16px; }
 /* Dark Mode - Override hardcoded colors */
 @media (prefers-color-scheme: dark) {
   .header { background: var(--n-100); border-bottom-color: var(--n-200); }
-  .mode-btn.active { background: var(--n-50); }
+  .header-btn { background: var(--n-200); color: var(--n-600); }
+  .header-btn:hover { background: var(--n-300); color: var(--n-700); }
+  .mode-btn.active { background: var(--n-50); color: var(--accent); }
   .btn-primary { color: #000; }
-  .btn-danger { color: #000; }
+  .btn-danger { color: #fff; }
+  .btn-secondary { background: var(--n-300); color: var(--n-700); border: 1px solid var(--n-400); }
+  .btn-secondary:hover { background: var(--n-400); }
+  .btn-outline { border-color: var(--n-400); color: var(--n-600); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
   .number-cell { background: var(--n-100); border-color: var(--n-200); }
   .number-cell.highlight { box-shadow: 0 0 20px rgba(96,165,250,0.5); }
   .number-cell.selected { box-shadow: 0 0 24px rgba(52,211,153,0.5); }
   .draw-btn { color: #000; }
   .draw-btn.running { color: #fff; }
-  .draw-btn:disabled { color: var(--n-500); }
+  .draw-btn:disabled { color: var(--n-400); background: var(--n-200); }
   .history-panel { background: var(--n-100); border-color: var(--n-200); }
+  .history-clear-btn { color: var(--n-400); }
+  .history-clear-btn:hover { color: var(--error); background: var(--n-200); }
+  .history-item { background: var(--n-200); }
   .modal { background: var(--n-100); }
-  .modal-close { background: var(--n-200); }
+  .modal-close { background: var(--n-200); color: var(--n-600); }
+  .modal-close:hover { background: var(--n-300); }
   .form-input, .form-select { background: var(--n-200); border-color: var(--n-300); color: var(--n-800); }
   .exclude-item { background: var(--n-100); border-color: var(--n-200); }
   .names-tag { background: var(--n-300); border: 1px solid var(--n-400); color: var(--n-700); }
   .names-tag-remove { color: var(--n-500); }
   .names-tag-remove:hover { background: var(--error); color: #fff; }
+  .names-add-btn { color: #000; }
   .names-guide { background: var(--n-200); border-color: var(--n-300); }
   .names-list { background: var(--n-200); border-color: var(--n-300); }
   .import-area { background: var(--n-100); border-color: var(--n-300); }
   .empty-state { background: var(--n-100); border-color: var(--n-300); }
-  .btn-secondary { color: var(--n-800); }
-  .history-item { background: var(--n-200); }
   .help-section h3 { border-bottom-color: var(--n-200); }
   .tab-bar { border-bottom-color: var(--n-200); }
   .tab-btn { color: var(--n-400); }
   .tab-btn.active { color: var(--accent); }
+  .toast { background: var(--n-200); color: var(--n-800); }
 }
 </style>
 </head>
