@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>随机抽取</title>
+<style>
+@font-face {
+  font-family: 'HarmonyOS_Sans';
+  src: url('HarmonyOS_Sans.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+:root {
+  --n-50: #f8fafc; --n-100: #f1f5f9; --n-200: #e2e8f0; --n-300: #cbd5e1;
+  --n-400: #94a3b8; --n-500: #64748b; --n-600: #475569; --n-700: #334155;
+  --n-800: #1e293b; --n-900: #0f172a;
+  --accent: #3b82f6; --success: #10b981; --error: #ef4444; --warning: #f59e0b;
+  --radius: 8px; --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'HarmonyOS_Sans', "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--n-50); color: var(--n-800);
+  min-height: 100vh; min-height: 100dvh; overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: #fff;
+  border-bottom: 1px solid var(--n-200); position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header h1 { font-size: 18px; font-weight: 700; color: var(--n-900); }
+.mode-switch { display: flex; background: var(--n-100); border-radius: 6px; padding: 2px; }
+.mode-btn {
+  padding: 6px 14px; border: none; border-radius: 4px; font-size: 13px;
+  font-weight: 600; cursor: pointer; background: transparent; color: var(--n-500);
+  transition: all var(--transition); font-family: inherit;
+}
+.mode-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.header-actions { display: flex; gap: 8px; }
+.header-btn {
+  width: 36px; height: 36px; border: none; border-radius: var(--radius);
+  background: var(--n-100); color: var(--n-600); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition), color var(--transition);
+}
+.header-btn:hover { background: var(--n-200); color: var(--n-800); }
+.header-btn svg { width: 20px; height: 20px; }
+
+/* Main */
+.app { display: flex; flex-direction: column; min-height: calc(100vh - 57px); min-height: calc(100dvh - 57px); }
+.main-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+
+/* Grid */
+.grid-container { width: 100%; max-width: 800px; margin-bottom: 24px; }
+.number-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.number-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); font-size: 16px; font-weight: 600;
+  cursor: default; user-select: none; position: relative; overflow: hidden;
+  transition: transform var(--transition), background var(--transition), box-shadow var(--transition), border-color var(--transition);
+  background: #fff; border: 2px solid var(--n-200); color: var(--n-700);
+}
+.number-cell.name-cell { aspect-ratio: auto; padding: 8px 4px; min-height: 48px; font-size: 14px; }
+.number-cell.drawn { opacity: 0.3; pointer-events: none; }
+.number-cell.highlight {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  transform: scale(1.12); box-shadow: 0 0 20px rgba(59,130,246,0.4); z-index: 2;
+}
+.number-cell.selected {
+  background: var(--success); color: #fff; border-color: var(--success);
+  transform: scale(1.15); box-shadow: 0 0 24px rgba(16,185,129,0.5); z-index: 3;
+}
+.number-cell.excluded::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--n-300) 4px, var(--n-300) 5px);
+  opacity: 0.5; pointer-events: none;
+}
+
+/* Draw Button */
+.draw-btn-wrapper { width: 100%; max-width: 800px; margin-bottom: 24px; }
+.draw-btn {
+  width: 100%; height: 56px; border: none; border-radius: var(--radius);
+  font-size: 18px; font-weight: 700; cursor: pointer; color: #fff; background: var(--accent);
+  transition: background var(--transition), transform 0.1s; font-family: inherit;
+}
+.draw-btn:hover { filter: brightness(1.05); }
+.draw-btn:active { transform: scale(0.98); }
+.draw-btn.running { background: var(--error); }
+.draw-btn:disabled { background: var(--n-300); color: var(--n-500); cursor: not-allowed; }
+
+/* Status */
+.status-bar {
+  width: 100%; max-width: 800px; display: flex;
+  justify-content: space-between; align-items: center;
+  margin-bottom: 16px; font-size: 13px; color: var(--n-500);
+}
+.storage-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  background: var(--n-200); color: var(--n-600);
+}
+
+/* History Panel */
+.history-panel {
+  width: 100%; max-width: 800px; background: #fff;
+  border: 1px solid var(--n-200); border-radius: var(--radius); overflow: hidden;
+}
+.history-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; cursor: pointer; user-select: none;
+}
+.history-header h3 { font-size: 14px; font-weight: 600; color: var(--n-700); }
+.history-header svg { width: 16px; height: 16px; color: var(--n-400); transition: transform var(--transition); }
+.history-header.collapsed svg { transform: rotate(-90deg); }
+.history-body {
+  padding: 0 16px 16px; max-height: 200px; overflow-y: auto;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+.history-body.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; }
+.history-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.history-item {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; height: 32px; padding: 0 10px; border-radius: 6px;
+  background: var(--n-100); color: var(--n-700); font-size: 13px; font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+.history-empty { text-align: center; color: var(--n-400); font-size: 13px; padding: 16px 0; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+.history-clear-btn {
+  border: none; background: none; color: var(--n-400); font-size: 12px;
+  cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.history-clear-btn:hover { color: var(--error); background: var(--n-100); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 560px;
+  max-height: 85vh; overflow-y: auto; transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 0;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--n-300); border-radius: 2px; margin: 12px auto 0; }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px;
+}
+.modal-header h2 { font-size: 16px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border: none; border-radius: var(--radius);
+  background: var(--n-100); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--n-500);
+}
+.modal-close:hover { background: var(--n-200); }
+.modal-body { padding: 8px 20px 24px; }
+
+/* Tabs */
+.tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--n-200); margin-bottom: 16px; }
+.tab-btn {
+  flex: 1; padding: 10px 0; border: none; background: none; font-size: 13px;
+  font-weight: 600; color: var(--n-500); cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all var(--transition); font-family: inherit;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--n-600); margin-bottom: 6px; }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.form-input, .form-select {
+  width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--n-200); border-radius: var(--radius);
+  font-size: 14px; font-family: inherit; color: var(--n-800); background: #fff;
+  transition: border-color var(--transition);
+}
+.form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+.form-hint { font-size: 12px; color: var(--n-400); margin-top: 4px; }
+
+/* Exclude Grid */
+.exclude-section { margin-top: 16px; }
+.exclude-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px; max-height: 200px; overflow-y: auto; padding: 4px 0;
+}
+.exclude-item {
+  display: flex; align-items: center; justify-content: center;
+  height: 36px; border: 1px solid var(--n-200); border-radius: 6px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all var(--transition); user-select: none;
+  background: #fff; color: var(--n-700);
+}
+.exclude-item:hover { border-color: var(--accent); }
+.exclude-item.active {
+  background: var(--n-100); border-color: var(--n-400);
+  color: var(--n-400); text-decoration: line-through;
+}
+.exclude-item.name-exclude { min-width: 70px; font-size: 12px; }
+
+/* Names Manager */
+.names-manager { margin-top: 8px; }
+.names-stats { font-size: 12px; color: var(--n-500); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.names-list {
+  display: flex; flex-wrap: wrap; gap: 6px; max-height: 240px;
+  overflow-y: auto; border: 1px solid var(--n-200);
+  border-radius: var(--radius); padding: 8px; min-height: 60px;
+}
+.names-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px; background: var(--n-100);
+  font-size: 13px; color: var(--n-700); animation: fadeIn 0.2s ease;
+}
+.names-tag-remove {
+  width: 16px; height: 16px; border: none; border-radius: 50%;
+  background: transparent; color: var(--n-400); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; padding: 0;
+}
+.names-tag-remove:hover { background: var(--error); color: #fff; }
+.names-guide {
+  padding: 24px 16px; text-align: center; background: var(--n-50);
+  border: 1px dashed var(--n-300); border-radius: var(--radius); margin: 8px 0;
+}
+.names-guide-icon { font-size: 32px; margin-bottom: 8px; }
+.names-guide-title { font-size: 14px; font-weight: 600; color: var(--n-700); margin-bottom: 4px; }
+.names-guide-desc { font-size: 12px; color: var(--n-500); line-height: 1.6; }
+.names-guide-steps {
+  text-align: left; margin: 12px auto; max-width: 280px;
+  font-size: 12px; color: var(--n-600); line-height: 1.8;
+}
+.names-guide-steps li { margin-bottom: 4px; }
+.names-add-row { display: flex; gap: 8px; margin-top: 8px; }
+.names-add-row .form-input { flex: 1; }
+.names-add-btn {
+  height: 40px; padding: 0 16px; border: none; border-radius: var(--radius);
+  background: var(--accent); color: #fff; font-size: 14px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; font-family: inherit;
+}
+.names-add-btn:hover { filter: brightness(1.05); }
+
+/* Import Area */
+.import-area {
+  border: 2px dashed var(--n-300); border-radius: var(--radius);
+  padding: 24px; text-align: center; cursor: pointer;
+  transition: all var(--transition); margin-top: 8px;
+}
+.import-area:hover { border-color: var(--accent); background: rgba(59,130,246,0.03); }
+.import-area.dragover { border-color: var(--accent); background: rgba(59,130,246,0.06); }
+.import-area p { color: var(--n-500); font-size: 13px; }
+.import-area .import-icon { font-size: 24px; margin-bottom: 8px; color: var(--n-400); }
+
+/* Buttons */
+.btn-group { display: flex; gap: 8px; margin-top: 16px; }
+.btn {
+  flex: 1; height: 40px; border: none; border-radius: var(--radius);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all var(--transition); font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-secondary { background: var(--n-100); color: var(--n-700); }
+.btn-secondary:hover { background: var(--n-200); }
+.btn-danger { background: var(--error); color: #fff; }
+.btn-danger:hover { filter: brightness(1.05); }
+.btn-sm { height: 32px; font-size: 12px; flex: none; padding: 0 12px; }
+.btn-outline { background: transparent; border: 1px solid var(--n-300); color: var(--n-600); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--n-800); color: #fff; padding: 10px 20px;
+  border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  z-index: 300; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Fullscreen */
+body.fullscreen-mode .header { display: none; }
+body.fullscreen-mode .main-content { padding: 32px 16px; }
+body.fullscreen-mode .number-cell { font-size: 28px; font-weight: 700; }
+body.fullscreen-mode .number-cell.name-cell { font-size: 20px; }
+body.fullscreen-mode .draw-btn { height: 72px; font-size: 24px; }
+body.fullscreen-mode .history-panel { display: none; }
+body.fullscreen-mode .status-bar { font-size: 16px; margin-bottom: 32px; }
+body.fullscreen-mode .grid-container { max-width: 1200px; }
+
+/* Responsive */
+@media (min-width: 640px) {
+  .number-grid { grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  .number-cell { font-size: 18px; }
+  .modal { border-radius: 16px; margin: auto; max-height: 80vh; }
+  .modal-overlay { align-items: center; }
+}
+@media (min-width: 1024px) {
+  .number-grid { grid-template-columns: repeat(10, 1fr); gap: 12px; }
+  .number-cell { font-size: 20px; }
+  .app { flex-direction: row; max-width: 1200px; margin: 0 auto; padding: 0 24px; gap: 24px; }
+  .main-content { flex: 1; padding: 48px 0; }
+  .sidebar { width: 300px; flex-shrink: 0; padding: 48px 0; }
+  .history-panel { position: sticky; top: 80px; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--n-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--n-400); }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(59,130,246,0); }
+}
+.number-cell.highlight { animation: pulse 0.6s infinite; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>随机抽取</h1>
+    <div class="mode-switch">
+      <button class="mode-btn active" data-mode="numbers">号数</button>
+      <button class="mode-btn" data-mode="names">人名</button>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="header-btn" id="btnFullscreen" title="全屏">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+    <button class="header-btn" id="btnSettings" title="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="main-content">
+    <div class="status-bar">
+      <span id="statusText">就绪</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="storage-badge">本地存储</span>
+        <span id="remainCount"></span>
+      </div>
+    </div>
+
+    <div class="grid-container">
+      <div class="number-grid" id="numberGrid"></div>
+    </div>
+
+    <div class="draw-btn-wrapper">
+      <button class="draw-btn" id="btnDraw">开始抽取</button>
+    </div>
+
+    <div class="history-panel">
+      <div class="history-header" id="historyToggle">
+        <h3>抽取历史</h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="history-body" id="historyBody">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span></span>
+          <button class="history-clear-btn" id="btnClearHistory">清空历史</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">暂无抽取记录</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>设置</h2>
+      <button class="modal-close" id="btnCloseSettings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="basic">基本设置</button>
+        <button class="tab-btn" data-tab="exclude">排除列表</button>
+        <button class="tab-btn" data-tab="names">人名管理</button>
+      </div>
+
+      <!-- Tab: Basic -->
+      <div class="tab-panel active" id="tabBasic">
+        <div class="form-row" id="numbersConfig">
+          <div class="form-group">
+            <label class="form-label">号码总数</label>
+            <input class="form-input" type="number" id="inputCount" min="2" max="200" value="50">
+          </div>
+          <div class="form-group">
+            <label class="form-label">起始号码</label>
+            <input class="form-input" type="number" id="inputStart" min="0" max="999" value="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">动画速度</label>
+            <select class="form-select" id="selectSpeed">
+              <option value="80">慢速</option>
+              <option value="50" selected>正常</option>
+              <option value="30">快速</option>
+              <option value="15">极快</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">每次抽取</label>
+            <select class="form-select" id="selectDrawCount">
+              <option value="1" selected>1 个</option>
+              <option value="2">2 个</option>
+              <option value="3">3 个</option>
+              <option value="5">5 个</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnSaveSettings">保存设置</button>
+        </div>
+      </div>
+
+      <!-- Tab: Exclude -->
+      <div class="tab-panel" id="tabExclude">
+        <div class="form-label">隐蔽排除列表 <span style="font-weight:400;color:var(--n-400)">（勾选的项目不参与抽取，但正常显示）</span></div>
+        <div class="exclude-grid" id="excludeGrid"></div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnSaveExclude">保存排除设置</button>
+        </div>
+      </div>
+
+      <!-- Tab: Names -->
+      <div class="tab-panel" id="tabNames">
+        <div class="names-manager">
+          <div class="names-stats">
+            共 <strong id="namesCount">0</strong> 人
+          </div>
+
+          <!-- Guide when empty -->
+          <div class="names-guide" id="namesGuide">
+            <div class="names-guide-icon">👥</div>
+            <div class="names-guide-title">还没有人名数据</div>
+            <div class="names-guide-desc">切换到「人名」模式前，请先添加人名：</div>
+            <ol class="names-guide-steps">
+              <li>在下方输入框逐个添加姓名</li>
+              <li>或准备一个 TXT 文件批量导入</li>
+              <li>每行一个名字，支持逗号分隔</li>
+            </ol>
+          </div>
+
+          <div class="names-add-row">
+            <input class="form-input" type="text" id="inputNewName" placeholder="输入姓名，回车添加">
+            <button class="names-add-btn" id="btnAddName">添加</button>
+          </div>
+          <div class="names-list" id="namesList"></div>
+          <div class="form-label" style="margin-top:16px;">导入人名</div>
+          <div class="import-area" id="importArea">
+            <div class="import-icon">📄</div>
+            <p>点击选择或拖拽 TXT 文件（每行一个名字）</p>
+          </div>
+          <input type="file" id="fileImportNames" accept=".txt" style="display:none">
+          <div class="btn-group" style="margin-top:8px;">
+            <button class="btn btn-secondary" id="btnExportNames">导出列表</button>
+            <button class="btn btn-danger" id="btnClearAllNames">清空人名</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== Default Data =====
+  const DEFAULT_NAMES = [];
+
+  // ===== State =====
+  const STORAGE_KEY = 'rdname-picker-config';
+  const DEFAULT_STATE = {
+    mode: 'numbers', count: 50, startNum: 1, speed: 50, drawCount: 1,
+    excludeSet: [], history: [], names: [],
+  };
+
+  let config = loadConfig();
+  let allItems = [];
+  let running = false;
+  let timer = null;
+
+  // ===== DOM =====
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const $grid = $('#numberGrid');
+  const $btnDraw = $('#btnDraw');
+  const $statusText = $('#statusText');
+  const $remainCount = $('#remainCount');
+  const $historyList = $('#historyList');
+  const $historyBody = $('#historyBody');
+  const $historyToggle = $('#historyToggle');
+  const $btnClearHistory = $('#btnClearHistory');
+  const $btnSettings = $('#btnSettings');
+  const $btnFullscreen = $('#btnFullscreen');
+  const $settingsOverlay = $('#settingsOverlay');
+  const $btnCloseSettings = $('#btnCloseSettings');
+  const $btnSaveSettings = $('#btnSaveSettings');
+  const $btnSaveExclude = $('#btnSaveExclude');
+  const $excludeGrid = $('#excludeGrid');
+  const $inputCount = $('#inputCount');
+  const $inputStart = $('#inputStart');
+  const $selectSpeed = $('#selectSpeed');
+  const $selectDrawCount = $('#selectDrawCount');
+  const $toast = $('#toast');
+  const $namesList = $('#namesList');
+  const $namesCount = $('#namesCount');
+  const $inputNewName = $('#inputNewName');
+  const $btnAddName = $('#btnAddName');
+  const $btnExportNames = $('#btnExportNames');
+  const $btnClearAllNames = $('#btnClearAllNames');
+  const $importArea = $('#importArea');
+  const $fileImportNames = $('#fileImportNames');
+  const $numbersConfig = $('#numbersConfig');
+
+  // ===== Storage =====
+  function loadConfig() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_STATE, ...parsed, excludeSet: parsed.excludeSet||[], history: parsed.history||[], names: parsed.names||[] };
+      }
+    } catch(e) {}
+    return { ...DEFAULT_STATE };
+  }
+
+  function saveConfig() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch(e) {}
+  }
+
+  // ===== Init =====
+  function buildAllItems() {
+    if (config.mode === 'numbers') {
+      allItems = [];
+      for (let i = 0; i < config.count; i++) allItems.push(String(config.startNum + i).padStart(2, '0'));
+    } else {
+      allItems = [...(config.names || [])];
+    }
+  }
+
+  function renderGrid() {
+    $grid.innerHTML = '';
+    allItems.forEach(item => {
+      const cell = document.createElement('div');
+      cell.className = 'number-cell' + (config.mode === 'names' ? ' name-cell' : '');
+      cell.textContent = item;
+      cell.dataset.num = item;
+      if (config.excludeSet.includes(item)) cell.classList.add('excluded');
+      if (config.history.includes(item)) cell.classList.add('drawn');
+      $grid.appendChild(cell);
+    });
+  }
+
+  function renderHistory() {
+    if (config.history.length === 0) {
+      $historyList.innerHTML = '<div class="history-empty">暂无抽取记录</div>';
+      return;
+    }
+    $historyList.innerHTML = '';
+    config.history.forEach((item, i) => {
+      const el = document.createElement('span');
+      el.className = 'history-item';
+      el.textContent = item;
+      if (i === 0) el.style.animation = 'fadeIn 0.3s ease';
+      $historyList.appendChild(el);
+    });
+  }
+
+  function renderNamesList() {
+    $namesList.innerHTML = '';
+    $namesCount.textContent = config.names.length;
+    // Show/hide guide
+    const guide = document.getElementById('namesGuide');
+    if (guide) guide.style.display = config.names.length === 0 ? 'block' : 'none';
+    config.names.forEach(name => {
+      const tag = document.createElement('span');
+      tag.className = 'names-tag';
+      tag.innerHTML = name + '<button class="names-tag-remove" data-name="' + name + '">&times;</button>';
+      $namesList.appendChild(tag);
+    });
+  }
+
+  function updateStatus() {
+    const avail = allItems.filter(n => !config.excludeSet.includes(n) && !config.history.includes(n));
+    $remainCount.textContent = `可抽取: ${avail.length}`;
+  }
+
+  function updateModeUI() {
+    $$('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === config.mode));
+    if ($numbersConfig) $numbersConfig.style.display = config.mode === 'numbers' ? 'flex' : 'none';
+  }
+
+  // ===== Drawing =====
+  function getAvailable() {
+    return allItems.filter(n => !config.excludeSet.includes(n) && !config.history.includes(n));
+  }
+
+  function startDraw() {
+    if (getAvailable().length === 0) { showToast('没有可抽取的项目'); return; }
+    running = true;
+    $btnDraw.textContent = '停止';
+    $btnDraw.classList.add('running');
+    $statusText.textContent = '抽取中...';
+    clearHighlight();
+    const avail = getAvailable();
+    timer = setInterval(() => {
+      clearHighlight();
+      const num = avail[Math.floor(Math.random() * avail.length)];
+      const cell = $grid.querySelector('[data-num="' + CSS.escape(num) + '"]');
+      if (cell) cell.classList.add('highlight');
+    }, config.speed);
+  }
+
+  function stopDraw() {
+    running = false;
+    clearInterval(timer); timer = null;
+    const drawCount = Math.min(config.drawCount, getAvailable().length);
+    const avail = getAvailable();
+    const selected = [];
+    for (let i = 0; i < drawCount; i++) {
+      const idx = Math.floor(Math.random() * avail.length);
+      selected.push(avail.splice(idx, 1)[0]);
+    }
+    clearHighlight();
+    selected.forEach((num, i) => {
+      const cell = $grid.querySelector('[data-num="' + CSS.escape(num) + '"]');
+      if (cell) {
+        setTimeout(() => {
+          cell.classList.remove('highlight'); cell.classList.add('selected');
+          setTimeout(() => { cell.classList.remove('selected'); cell.classList.add('drawn'); }, 1200);
+        }, i * 200);
+      }
+    });
+    selected.forEach(n => config.history.unshift(n));
+    saveConfig();
+    setTimeout(() => { renderHistory(); updateStatus(); }, 50);
+    $btnDraw.textContent = '开始抽取';
+    $btnDraw.classList.remove('running');
+    $statusText.textContent = '就绪';
+    if (drawCount > 1) showToast('已抽取: ' + selected.join(', '));
+  }
+
+  function clearHighlight() {
+    $grid.querySelectorAll('.number-cell.highlight').forEach(c => c.classList.remove('highlight'));
+  }
+
+  // ===== Settings =====
+  function openSettings() {
+    populateForm(); renderExcludeGrid(); renderNamesList(); updateModeUI();
+    $settingsOverlay.classList.add('open');
+  }
+  function closeSettings() { $settingsOverlay.classList.remove('open'); }
+
+  function populateForm() {
+    $inputCount.value = config.count;
+    $inputStart.value = config.startNum;
+    $selectSpeed.value = config.speed;
+    $selectDrawCount.value = config.drawCount;
+  }
+
+  function renderExcludeGrid() {
+    $excludeGrid.innerHTML = '';
+    allItems.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'exclude-item' + (config.mode === 'names' ? ' name-exclude' : '') + (config.excludeSet.includes(item) ? ' active' : '');
+      el.textContent = item;
+      el.addEventListener('click', () => {
+        const idx = config.excludeSet.indexOf(item);
+        if (idx >= 0) { config.excludeSet.splice(idx, 1); el.classList.remove('active'); }
+        else { config.excludeSet.push(item); el.classList.add('active'); }
+      });
+      $excludeGrid.appendChild(el);
+    });
+  }
+
+  function saveBasicSettings() {
+    config.count = Math.max(2, Math.min(200, parseInt($inputCount.value) || 35));
+    config.startNum = Math.max(0, Math.min(999, parseInt($inputStart.value) || 1));
+    config.speed = parseInt($selectSpeed.value) || 50;
+    config.drawCount = parseInt($selectDrawCount.value) || 1;
+    buildAllItems(); config.excludeSet = config.excludeSet.filter(n => allItems.includes(n));
+    saveConfig(); renderGrid(); renderHistory(); updateStatus(); closeSettings();
+    showToast('设置已保存');
+  }
+
+  function saveExcludeSettings() {
+    saveConfig(); renderGrid(); updateStatus(); closeSettings();
+    showToast('排除设置已保存');
+  }
+
+  // ===== Names =====
+  function addName() {
+    const name = $inputNewName.value.trim();
+    if (!name) return;
+    if (config.names.includes(name)) { showToast('该姓名已存在'); return; }
+    config.names.push(name);
+    $inputNewName.value = '';
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus();
+  }
+
+  function removeName(name) {
+    config.names = config.names.filter(n => n !== name);
+    config.excludeSet = config.excludeSet.filter(n => n !== name);
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); renderGrid(); updateStatus();
+  }
+
+  function clearAllNames() {
+    if (!confirm('确定要清空所有人名吗？')) return;
+    config.names = []; config.excludeSet = [];
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); renderGrid(); updateStatus();
+    showToast('人名已清空');
+  }
+
+  function importNamesFromText(text) {
+    const names = [];
+    text.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      [',', ';', '\t'].forEach(sep => {
+        if (line.includes(sep)) {
+          line.split(sep).forEach(p => { p = p.trim(); if (p) names.push(p); });
+          line = '';
+        }
+      });
+      if (line) names.push(line);
+    });
+    let added = 0;
+    names.forEach(name => {
+      if (!config.names.includes(name)) { config.names.push(name); added++; }
+    });
+    saveConfig(); renderNamesList(); buildAllItems(); renderExcludeGrid(); updateStatus();
+    showToast(`导入成功，新增 ${added} 人，共 ${config.names.length} 人`);
+  }
+
+  function exportNames() {
+    const blob = new Blob([config.names.join('\n') + '\n'], { type: 'text/plain; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'names_export.txt';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('人名列表已导出');
+  }
+
+  // ===== Tabs =====
+  function switchTab(tabName) {
+    $$('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+    $$('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)));
+  }
+
+  // ===== Fullscreen =====
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(()=>{});
+      document.body.classList.add('fullscreen-mode');
+    } else {
+      document.exitFullscreen().catch(()=>{});
+      document.body.classList.remove('fullscreen-mode');
+    }
+  }
+
+  // ===== Toast =====
+  function showToast(msg) { $toast.textContent = msg; $toast.classList.add('show'); setTimeout(()=>$toast.classList.remove('show'), 2000); }
+
+  // ===== Events =====
+  function bindEvents() {
+    $$('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        config.mode = btn.dataset.mode;
+        saveConfig(); buildAllItems(); renderGrid(); updateStatus(); updateModeUI();
+      });
+    });
+
+    $btnDraw.addEventListener('click', () => running ? stopDraw() : startDraw());
+    $btnSettings.addEventListener('click', openSettings);
+    $btnCloseSettings.addEventListener('click', closeSettings);
+    $settingsOverlay.addEventListener('click', e => { if (e.target === $settingsOverlay) closeSettings(); });
+    $btnSaveSettings.addEventListener('click', saveBasicSettings);
+    $btnSaveExclude.addEventListener('click', saveExcludeSettings);
+
+    $$('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+    $btnAddName.addEventListener('click', addName);
+    $inputNewName.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addName(); } });
+    $namesList.addEventListener('click', e => {
+      const btn = e.target.closest('.names-tag-remove');
+      if (btn) removeName(btn.dataset.name);
+    });
+    $btnExportNames.addEventListener('click', exportNames);
+    $btnClearAllNames.addEventListener('click', clearAllNames);
+
+    $importArea.addEventListener('click', () => $fileImportNames.click());
+    $fileImportNames.addEventListener('change', e => {
+      if (e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = ev => importNamesFromText(ev.target.result);
+        reader.readAsText(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+    $importArea.addEventListener('dragover', e => { e.preventDefault(); $importArea.classList.add('dragover'); });
+    $importArea.addEventListener('dragleave', () => $importArea.classList.remove('dragover'));
+    $importArea.addEventListener('drop', e => {
+      e.preventDefault(); $importArea.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) {
+        const reader = new FileReader();
+        reader.onload = ev => importNamesFromText(ev.target.result);
+        reader.readAsText(e.dataTransfer.files[0]);
+      }
+    });
+
+    $btnFullscreen.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('fullscreen-mode'); });
+
+    $historyToggle.addEventListener('click', () => { $historyBody.classList.toggle('collapsed'); $historyToggle.classList.toggle('collapsed'); });
+    $btnClearHistory.addEventListener('click', () => {
+      config.history = []; saveConfig(); renderHistory(); renderGrid(); updateStatus(); showToast('历史已清空');
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); running ? stopDraw() : startDraw(); }
+      if (e.code === 'Escape') { $settingsOverlay.classList.contains('open') ? closeSettings() : running && stopDraw(); }
+      if (e.code === 'KeyF') toggleFullscreen();
+      if (e.code === 'KeyS') openSettings();
+    });
+  }
+
+  // ===== Boot =====
+  buildAllItems(); renderGrid(); renderHistory(); updateStatus(); bindEvents(); updateModeUI();
+})();
+</script>
+</body>
+</html>
